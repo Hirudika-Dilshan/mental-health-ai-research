@@ -1,2 +1,24 @@
 git_workflow_guide.md
 simplified_project.txt
+
+# Python Bytecode (Auto-generated)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments (Heavy folders with installed libraries)
+venv/
+env/
+.venv/
+.env
+
+# Environment Variables (Secrets/API Keys - NEVER commit these)
+.env
+.env.local
+
+# IDE Settings (VS Code settings specific to your machine)
+.vscode/
+
+# OS System Files
+.DS_Store
+Thumbs.db
