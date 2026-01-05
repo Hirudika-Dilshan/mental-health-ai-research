@@ -1,11 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import '../ChatUI.css';
 
-export default function ChatUI() {
-  const [messages, setMessages] = useState([
-    { id: 1, text: "Hello! How can I help you?", sender: "backend" },
-    { id: 2, text: "Hi there!", sender: "user" }
-  ]);
+export default function ChatUI({ userId }) {
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef(null);
 
@@ -17,14 +14,39 @@ export default function ChatUI() {
     scrollToBottom();
   }, [messages]);
 
+  // Load chat history on mount
+  useEffect(() => {
+    if (userId) {
+      loadChatHistory();
+    }
+  }, [userId]);
+
+  const loadChatHistory = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/chat/history/${userId}`);
+      const data = await response.json();
+      if (data.messages) {
+        const formattedMessages = data.messages.map(msg => ({
+          id: msg.id,
+          text: msg.message,
+          sender: msg.sender === 'user' ? 'user' : 'backend'
+        }));
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+    }
+  };
+
   const handleSend = async () => {
-    if (inputText.trim()) {
+    if (inputText.trim() && userId) {
       const newMessage = {
         id: Date.now(),
         text: inputText,
         sender: "user"
       };
       setMessages([...messages, newMessage]);
+      const currentInput = inputText;
       setInputText("");
 
       try {
@@ -33,7 +55,7 @@ export default function ChatUI() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ message: inputText }),
+          body: JSON.stringify({ message: currentInput, user_id: userId }),
         });
         
         const data = await response.json();
