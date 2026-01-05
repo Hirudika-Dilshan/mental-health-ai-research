@@ -20,22 +20,23 @@ app.add_middleware(
 )
 
 # --- DATA MODEL ---
-# This defines the structure of data we expect from React
 class UserInput(BaseModel):
     message: str
 
-# --- API ENDPOINT ---
-@app.post("/analyze")
-async def analyze_mental_health(input_data: UserInput):
-    # This is where your AI Logic will go later
-    print(f"Received from frontend: {input_data.message}")
+class BotResponse(BaseModel):
+    response: str
+
+@app.post("/chat")
+def chat(user_input: UserInput):
+    # Get the user's message
+    user_message = user_input.message
     
-    # Mock response for now
-    return {
-        "reply": "I received your message!",
-        "sentiment": "neutral", 
-        "original_message": input_data.message
-    }
+    
+    
+    bot_reply = f"You said: {user_message}. How can I help you with that?"
+    
+    return {"response": bot_reply}
+
 
 # --- ROOT ENDPOINT (Just for testing) ---
 @app.get("/")
