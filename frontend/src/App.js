@@ -18,16 +18,14 @@ function App() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const handleLogin = (userData) => {
-    setUser(userData);
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -35,23 +33,15 @@ function App() {
   };
 
   if (loading) {
-    return <div className="App">Loading...</div>;
+    return <div>Loading...</div>;
   }
 
   return (
     <div className="App">
       {user ? (
-        <div>
-          <div style={{ padding: '1rem', background: '#f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Logged in as: {user.email}</span>
-            <button onClick={handleLogout} style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>
-              Logout
-            </button>
-          </div>
-          <ChatUI userId={user.id} />
-        </div>
+        <ChatUI userId={user.id} onLogout={handleLogout} />
       ) : (
-        <Login onLogin={handleLogin} />
+        <Login onLogin={setUser} />
       )}
     </div>
   );
