@@ -219,3 +219,72 @@
 .messages-container::-webkit-scrollbar-thumb:hover {
   background: #999;
 }
+
+/* Add to existing ChatUI.css */
+
+.subtitle {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+}
+
+.crisis-banner {
+  background: #ff4444;
+  color: white;
+  padding: 1rem;
+  margin: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.crisis-banner strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.info-box {
+  background: #f0f7ff;
+  border: 2px solid #4a90e2;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  max-width: 600px;
+}
+
+.info-box h3 {
+  color: #4a90e2;
+  margin-top: 0;
+}
+
+.info-box p {
+  line-height: 1.6;
+  color: #333;
+}
+
+.message-input {
+  resize: vertical;
+  min-height: 45px;
+  max-height: 150px;
+  font-family: inherit;
+}
+
+.input-footer {
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.input-footer small {
+  color: #888;
+}
+
+/* Better message formatting */
+.message-bubble {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.5;
+}
+
+.message-bubble strong {
+  font-weight: 600;
+}

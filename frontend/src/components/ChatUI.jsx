@@ -8,6 +8,8 @@ export default function ChatUI({ userId, onLogout }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [protocolState, setProtocolState] = useState(null);
+  const [showCrisisWarning, setShowCrisisWarning] = useState(false);
   const messagesEndRef = useRef(null);
 
   const API_URL = 'http://localhost:8000';
@@ -20,37 +22,30 @@ export default function ChatUI({ userId, onLogout }) {
     scrollToBottom();
   }, [messages]);
 
-  // Load sessions on mount
   useEffect(() => {
     if (userId) {
       loadSessions();
     }
   }, [userId]);
 
-  // Load messages when session changes
   useEffect(() => {
     if (currentSessionId) {
       loadSessionMessages(currentSessionId);
+      loadProtocolState(currentSessionId);
     } else {
       setMessages([]);
+      setProtocolState(null);
     }
   }, [currentSessionId]);
 
   const loadSessions = async () => {
     try {
-      console.log('Loading sessions for user:', userId);
       const response = await fetch(`${API_URL}/sessions/${userId}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
       const data = await response.json();
-      console.log('Loaded sessions:', data);
-      
       setSessions(data.sessions || []);
       
-      // If no current session and sessions exist, select the first one
       if (!currentSessionId && data.sessions && data.sessions.length > 0) {
         setCurrentSessionId(data.sessions[0].id);
       }
@@ -60,23 +55,32 @@ export default function ChatUI({ userId, onLogout }) {
     }
   };
 
-  const loadSessionMessages = async (sessionId) => {
+  const loadProtocolState = async (sessionId) => {
     try {
-      console.log('Loading messages for session:', sessionId);
       const response = await fetch(`${API_URL}/sessions/${sessionId}/messages`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
       const data = await response.json();
-      console.log('Loaded messages:', data);
+      // Extract protocol info from session if needed
+      setProtocolState(data.protocol_state || null);
+    } catch (error) {
+      console.error("Error loading protocol state:", error);
+    }
+  };
+
+  const loadSessionMessages = async (sessionId) => {
+    try {
+      const response = await fetch(`${API_URL}/sessions/${sessionId}/messages`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const data = await response.json();
       
       if (data.messages) {
         const formattedMessages = data.messages.map(msg => ({
           id: msg.id,
           text: msg.message,
-          sender: msg.sender === 'user' ? 'user' : 'backend'
+          sender: msg.sender === 'user' ? 'user' : 'backend',
+          timestamp: msg.created_at
         }));
         setMessages(formattedMessages);
       }
@@ -88,7 +92,6 @@ export default function ChatUI({ userId, onLogout }) {
 
   const handleNewChat = async () => {
     try {
-      console.log('Creating new chat for user:', userId);
       const response = await fetch(`${API_URL}/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,20 +104,55 @@ export default function ChatUI({ userId, onLogout }) {
       }
       
       const data = await response.json();
-      console.log('Created session:', data);
       
-      // Add new session to list and select it
       setSessions(prev => [data.session, ...prev]);
       setCurrentSessionId(data.session.id);
       setMessages([]);
+      setProtocolState(null);
+      setShowCrisisWarning(false);
+      
+      // Automatically send first message to start protocol
+      setTimeout(() => {
+        sendInitialMessage(data.session.id);
+      }, 500);
     } catch (error) {
       console.error("Error creating new chat:", error);
       alert(`Failed to create new chat: ${error.message}`);
     }
   };
 
+  const sendInitialMessage = async (sessionId) => {
+    try {
+      const response = await fetch(`${API_URL}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          message: "Hello", 
+          user_id: userId,
+          session_id: sessionId 
+        }),
+      });
+      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const data = await response.json();
+      
+      const backendMessage = {
+        id: Date.now(),
+        text: data.response,
+        sender: "backend"
+      };
+      
+      setMessages([backendMessage]);
+      await loadSessions();
+    } catch (error) {
+      console.error("Error sending initial message:", error);
+    }
+  };
+
   const handleSelectSession = (sessionId) => {
     setCurrentSessionId(sessionId);
+    setShowCrisisWarning(false);
   };
 
   const handleDeleteSession = async (sessionId) => {
@@ -123,14 +161,10 @@ export default function ChatUI({ userId, onLogout }) {
         method: 'DELETE',
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
-      // Remove from list
       setSessions(prev => prev.filter(s => s.id !== sessionId));
       
-      // If deleted current session, switch to another
       if (sessionId === currentSessionId) {
         const remaining = sessions.filter(s => s.id !== sessionId);
         if (remaining.length > 0) {
@@ -147,7 +181,7 @@ export default function ChatUI({ userId, onLogout }) {
   };
 
   const handleSend = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isLoading) return;
     
     const newMessage = {
       id: Date.now(),
@@ -171,13 +205,16 @@ export default function ChatUI({ userId, onLogout }) {
         }),
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
       const data = await response.json();
       
-      // If this was a new chat (no session_id), update the current session
+      // Check for crisis
+      if (data.crisis) {
+        setShowCrisisWarning(true);
+      }
+      
+      // If this was a new chat, update session ID
       if (!currentSessionId && data.session_id) {
         setCurrentSessionId(data.session_id);
       }
@@ -189,12 +226,17 @@ export default function ChatUI({ userId, onLogout }) {
       };
       
       setMessages(prev => [...prev, backendMessage]);
-      
-      // Reload sessions to update metadata
       await loadSessions();
     } catch (error) {
       console.error("Error sending message:", error);
-      alert(`Failed to send message: ${error.message}`);
+      
+      // Show error message in chat
+      const errorMessage = {
+        id: Date.now() + 1,
+        text: "Sorry, there was an error processing your message. Please try again.",
+        sender: "backend"
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -219,29 +261,51 @@ export default function ChatUI({ userId, onLogout }) {
       
       <div className="chat-main">
         <div className="chat-header">
-          <h2>Mental Health AI Chat</h2>
+          <div>
+            <h2>GAD-7 Mental Health Screening</h2>
+            <p className="subtitle">Conversational AI for Anxiety Assessment</p>
+          </div>
           <button onClick={onLogout} className="logout-btn">
             Logout
           </button>
         </div>
 
+        {showCrisisWarning && (
+          <div className="crisis-banner">
+            <strong>⚠️ Crisis Resources Available</strong>
+            <p>If you're in crisis, please contact: 1926 (24/7) or 070 2211311</p>
+          </div>
+        )}
+
         <div className="messages-container">
           {messages.length === 0 ? (
             <div className="empty-state">
-              <h2>Start a new conversation</h2>
-              <p>Send a message to begin chatting</p>
+              <h2>Welcome to GAD-7 Screening</h2>
+              <p>Click "New Chat" to begin a new anxiety assessment</p>
+              <div className="info-box">
+                <h3>What is GAD-7?</h3>
+                <p>The GAD-7 is a validated screening tool for generalized anxiety disorder. This conversational version will ask you 7 questions about your experiences over the past 2 weeks.</p>
+                <p><strong>Remember:</strong> This is a screening tool, not a diagnosis. Only a healthcare professional can provide a proper assessment.</p>
+              </div>
             </div>
           ) : (
-            messages.map((message) => (
-              <div
-                key={message.id}
-                className={`message-wrapper ${message.sender}`}
-              >
-                <div className={`message-bubble ${message.sender}`}>
-                  {message.text}
+            <>
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`message-wrapper ${message.sender}`}
+                >
+                  <div className={`message-bubble ${message.sender}`}>
+                    {message.text.split('\n').map((line, i) => (
+                      <span key={i}>
+                        {line}
+                        {i < message.text.split('\n').length - 1 && <br />}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </>
           )}
           {isLoading && (
             <div className="message-wrapper backend">
@@ -257,14 +321,14 @@ export default function ChatUI({ userId, onLogout }) {
 
         <div className="input-container">
           <div className="input-wrapper">
-            <input
-              type="text"
+            <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type a message..."
+              placeholder="Type your response..."
               className="message-input"
               disabled={isLoading}
+              rows="2"
             />
             <button 
               onClick={handleSend} 
@@ -273,6 +337,9 @@ export default function ChatUI({ userId, onLogout }) {
             >
               {isLoading ? 'Sending...' : 'Send'}
             </button>
+          </div>
+          <div className="input-footer">
+            <small>Press Enter to send, Shift+Enter for new line</small>
           </div>
         </div>
       </div>
