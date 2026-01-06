@@ -18,14 +18,15 @@ export default function Login({ onLogin }) {
       let response;
       if (isRegistering) {
         // Register
-        response = await fetch('http://localhost:8000/register', {
+        const API_URL = process.env.REACT_APP_API_URL || '/api';
+        response = await fetch(`${API_URL}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
         });
       } else {
         // Login
-        response = await fetch('http://localhost:8000/login', {
+        response = await fetch(`${API_URL}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),

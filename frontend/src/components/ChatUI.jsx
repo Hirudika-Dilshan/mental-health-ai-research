@@ -12,7 +12,7 @@ export default function ChatUI({ userId, onLogout }) {
   const [showCrisisWarning, setShowCrisisWarning] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const API_URL = 'http://localhost:8000';
+  const API_URL = process.env.REACT_APP_API_URL || '/api';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
