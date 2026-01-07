@@ -5,4 +5,4 @@ python-dotenv==1.0.0
 python-multipart==0.0.9
 pydantic==2.12.5
 groq==0.11.0
-
+mangum==0.18.0

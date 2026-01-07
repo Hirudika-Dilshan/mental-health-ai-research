@@ -507,5 +507,3 @@ def update_protocol_state(session_id: str, protocol_state: Dict,
     except Exception as e:
         print(f"Error updating protocol state: {e}")
 
-# This is the handler Vercel will use
-handler = app
