@@ -9,13 +9,13 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const API_URL = process.env.REACT_APP_API_URL || '/api';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-  
-    const API_URL = process.env.REACT_APP_API_URL || '/api'; // ✅ Move this to the top
-  
+
     try {
       let response;
       if (isRegistering) {
@@ -33,20 +33,20 @@ export default function Login({ onLogin }) {
           body: JSON.stringify({ email, password }),
         });
       }
-  
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         throw new Error(data.detail || 'Authentication failed');
       }
-  
+
       // For registration, try to sign in immediately
       // For login, the backend already authenticated, so sign in with Supabase client
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-  
+
       if (authError) {
         // If email confirmation is required, show helpful message
         const errorMsg = authError.message || '';
@@ -58,7 +58,7 @@ export default function Login({ onLogin }) {
         }
         throw authError;
       }
-  
+
       if (authData?.user) {
         onLogin(authData.user);
       } else {
@@ -113,4 +113,3 @@ export default function Login({ onLogin }) {
     </div>
   );
 }
-
