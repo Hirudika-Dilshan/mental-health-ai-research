@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ChatHistory from './ChatHistory';
 import '../ChatUI.css';
 
@@ -8,7 +8,6 @@ export default function ChatUI({ userId, onLogout }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [protocolState, setProtocolState] = useState(null);
   const [showCrisisWarning, setShowCrisisWarning] = useState(false);
   const messagesEndRef = useRef(null);
 
@@ -22,23 +21,7 @@ export default function ChatUI({ userId, onLogout }) {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    if (userId) {
-      loadSessions();
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (currentSessionId) {
-      loadSessionMessages(currentSessionId);
-      loadProtocolState(currentSessionId);
-    } else {
-      setMessages([]);
-      setProtocolState(null);
-    }
-  }, [currentSessionId]);
-
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/sessions/${userId}`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -53,22 +36,23 @@ export default function ChatUI({ userId, onLogout }) {
       console.error("Error loading sessions:", error);
       setSessions([]);
     }
-  };
+  }, [API_URL, userId, currentSessionId]);
 
-  const loadProtocolState = async (sessionId) => {
+  const loadProtocolState = useCallback(async (sessionId) => {
     try {
       const response = await fetch(`${API_URL}/sessions/${sessionId}/messages`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
       const data = await response.json();
-      // Extract protocol info from session if needed
-      setProtocolState(data.protocol_state || null);
+      // Protocol state loaded but not currently used in UI
+      // Can be used for future features
+      console.log('Protocol state:', data.protocol_state);
     } catch (error) {
       console.error("Error loading protocol state:", error);
     }
-  };
+  }, [API_URL]);
 
-  const loadSessionMessages = async (sessionId) => {
+  const loadSessionMessages = useCallback(async (sessionId) => {
     try {
       const response = await fetch(`${API_URL}/sessions/${sessionId}/messages`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -88,7 +72,22 @@ export default function ChatUI({ userId, onLogout }) {
       console.error("Error loading messages:", error);
       setMessages([]);
     }
-  };
+  }, [API_URL]);
+
+  useEffect(() => {
+    if (userId) {
+      loadSessions();
+    }
+  }, [userId, loadSessions]);
+
+  useEffect(() => {
+    if (currentSessionId) {
+      loadSessionMessages(currentSessionId);
+      loadProtocolState(currentSessionId);
+    } else {
+      setMessages([]);
+    }
+  }, [currentSessionId, loadSessionMessages, loadProtocolState]);
 
   const handleNewChat = async () => {
     try {
@@ -108,7 +107,6 @@ export default function ChatUI({ userId, onLogout }) {
       setSessions(prev => [data.session, ...prev]);
       setCurrentSessionId(data.session.id);
       setMessages([]);
-      setProtocolState(null);
       setShowCrisisWarning(false);
       
       // Automatically send first message to start protocol
