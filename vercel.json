@@ -19,8 +19,15 @@
       "dest": "api/main.py"
     },
     {
+      "src": "/api",
+      "dest": "api/main.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "frontend/$1"
     }
-  ]
+  ],
+  "env": {
+    "PYTHONUNBUFFERED": "1"
+  }
 }
