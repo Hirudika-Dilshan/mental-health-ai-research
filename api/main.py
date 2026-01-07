@@ -5,8 +5,8 @@ from supabase import create_client, Client
 import os
 from typing import Optional, List, Dict
 from datetime import datetime
-from gad7_protocol import GAD7Protocol
-from llm_service import LLMService
+from .gad7_protocol import GAD7Protocol
+from .llm_service import LLMService
 import json
 
 app = FastAPI()
